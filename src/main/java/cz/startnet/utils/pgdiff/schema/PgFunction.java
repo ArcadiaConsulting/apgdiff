@@ -5,6 +5,7 @@
  */
 package cz.startnet.utils.pgdiff.schema;
 
+
 import cz.startnet.utils.pgdiff.PgDiffUtils;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -82,7 +83,9 @@ public class PgFunction {
         sbSQL.append(';');
 
         if (comment != null && !comment.isEmpty()) {
-            sbSQL.append("\n\nCOMMENT ON FUNCTION ");
+            sbSQL.append(System.getProperty("line.separator"));
+            sbSQL.append(System.getProperty("line.separator"));
+            sbSQL.append("COMMENT ON FUNCTION ");
             sbSQL.append(PgDiffUtils.getQuotedName(name));
             sbSQL.append('(');
 
@@ -132,6 +135,7 @@ public class PgFunction {
     public String getDropSQL() {
         final StringBuilder sbString = new StringBuilder(100);
         sbString.append("DROP FUNCTION ");
+        sbString.append(PgDiffUtils.getDropIfExists());
         sbString.append(name);
         sbString.append('(');
 

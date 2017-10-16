@@ -76,6 +76,7 @@ public class PgIndex {
         }
 
         sbSQL.append("INDEX ");
+        sbSQL.append(PgDiffUtils.getCreateIfNotExists());        
         sbSQL.append(PgDiffUtils.getQuotedName(getName()));
         sbSQL.append(" ON ");
         sbSQL.append(PgDiffUtils.getQuotedName(getTableName()));
@@ -84,7 +85,9 @@ public class PgIndex {
         sbSQL.append(';');
 
         if (comment != null && !comment.isEmpty()) {
-            sbSQL.append("\n\nCOMMENT ON INDEX ");
+            sbSQL.append(System.getProperty("line.separator"));
+            sbSQL.append(System.getProperty("line.separator"));
+            sbSQL.append("COMMENT ON INDEX ");
             sbSQL.append(PgDiffUtils.getQuotedName(name));
             sbSQL.append(" IS ");
             sbSQL.append(comment);
@@ -118,7 +121,7 @@ public class PgIndex {
      * @return created SQL statement
      */
     public String getDropSQL() {
-        return "DROP INDEX " + PgDiffUtils.getQuotedName(getName()) + ";";
+        return "DROP INDEX " + PgDiffUtils.getDropIfExists() + PgDiffUtils.getQuotedName(getName()) + ";";
     }
 
     /**
