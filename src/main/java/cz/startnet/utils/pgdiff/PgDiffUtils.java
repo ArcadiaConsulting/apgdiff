@@ -475,11 +475,6 @@ public class PgDiffUtils {
         "XMLVALIDATE",
         "YEAR",
         "ZONE"};
-    
-     /**
-     * Determine if use CREATE IF NOT EXISTS OR DROP IF EXISTS where is possible
-     */
-    private static boolean useIfExists;
 
     /**
      * If name contains only lower case characters and digits and is not
@@ -531,39 +526,6 @@ public class PgDiffUtils {
      */
     public static String getQuotedName(final String name) {
         return getQuotedName(name, false);
-    }
-    
-     /**
-     * IF useIfExists is true return DROP IF NOT EXISTS
-     *
-     *
-     * @return DROP IF NOT EXISTS STRING
-     */
-    public static String getDropIfExists() {
-
-        if (useIfExists) {
-            return "IF EXISTS ";
-        }
-        return "";
-    }
-    
-     /**
-     * IF useIfExists is true return IF NOT EXISTS
-     *
-     *
-     * @return IF NOT EXISTS STRING
-     */
-    public static String getCreateIfNotExists() {
-
-        if (useIfExists) {
-            return "IF NOT EXISTS ";
-        }
-        return "";
-    }
-
-    public static void setUseExists(final boolean useExists) {
-
-        useIfExists = useExists;
     }
 
     /**

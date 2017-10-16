@@ -7,19 +7,16 @@ package cz.startnet.utils.pgdiff.loader;
 
 import cz.startnet.utils.pgdiff.Resources;
 import cz.startnet.utils.pgdiff.parsers.AlterSequenceParser;
-import cz.startnet.utils.pgdiff.parsers.AlterRelationParser;
+import cz.startnet.utils.pgdiff.parsers.AlterTableParser;
+import cz.startnet.utils.pgdiff.parsers.AlterViewParser;
 import cz.startnet.utils.pgdiff.parsers.CommentParser;
-import cz.startnet.utils.pgdiff.parsers.CreateExtensionParser;
 import cz.startnet.utils.pgdiff.parsers.CreateFunctionParser;
-import cz.startnet.utils.pgdiff.parsers.CreateTypeParser;
 import cz.startnet.utils.pgdiff.parsers.CreateIndexParser;
 import cz.startnet.utils.pgdiff.parsers.CreateSchemaParser;
 import cz.startnet.utils.pgdiff.parsers.CreateSequenceParser;
 import cz.startnet.utils.pgdiff.parsers.CreateTableParser;
 import cz.startnet.utils.pgdiff.parsers.CreateTriggerParser;
 import cz.startnet.utils.pgdiff.parsers.CreateViewParser;
-import cz.startnet.utils.pgdiff.parsers.GrantRevokeParser;
-import cz.startnet.utils.pgdiff.parsers.CreatePolicyParser;
 import cz.startnet.utils.pgdiff.schema.PgDatabase;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -55,20 +52,19 @@ public class PgDumpLoader { //NOPMD
      * Pattern for testing whether it is CREATE TABLE statement.
      */
     private static final Pattern PATTERN_CREATE_TABLE = Pattern.compile(
-            "^CREATE[\\s]+(UNLOGGED\\s|FOREIGN\\s)*TABLE[\\s]+.*$",
+            "^CREATE[\\s]+TABLE[\\s]+.*$",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     /**
-     * Pattern for testing whether it is CREATE VIEW or CREATE MATERIALIZED
-     * VIEW statement.
+     * Pattern for testing whether it is CREATE VIEW statement.
      */
     private static final Pattern PATTERN_CREATE_VIEW = Pattern.compile(
-            "^CREATE[\\s]+(?:OR[\\s]+REPLACE[\\s]+)?(?:MATERIALIZED[\\s]+)?VIEW[\\s]+.*$",
+            "^CREATE[\\s]+(?:OR[\\s]+REPLACE[\\s]+)?VIEW[\\s]+.*$",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     /**
      * Pattern for testing whether it is ALTER TABLE statement.
      */
     private static final Pattern PATTERN_ALTER_TABLE =
-            Pattern.compile("^ALTER[\\s](FOREIGN)*TABLE[\\s]+.*$",
+            Pattern.compile("^ALTER[\\s]+TABLE[\\s]+.*$",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     /**
      * Pattern for testing whether it is CREATE SEQUENCE statement.
@@ -114,7 +110,7 @@ public class PgDumpLoader { //NOPMD
      * Pattern for testing whether it is CREATE TRIGGER statement.
      */
     private static final Pattern PATTERN_CREATE_TRIGGER = Pattern.compile(
-            "^CREATE[\\s]+(CONSTRAINT){0,1}[\\s]*TRIGGER[\\s]+.*$",
+            "^CREATE[\\s]+TRIGGER[\\s]+.*$",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     /**
      * Pattern for testing whether it is CREATE FUNCTION or CREATE OR REPLACE
@@ -127,7 +123,7 @@ public class PgDumpLoader { //NOPMD
      * Pattern for testing whether it is ALTER VIEW statement.
      */
     private static final Pattern PATTERN_ALTER_VIEW = Pattern.compile(
-            "^ALTER[\\s]+(?:MATERIALIZED[\\s]+)?VIEW[\\s]+.*$",
+            "^ALTER[\\s]+VIEW[\\s]+.*$",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     /**
      * Pattern for testing whether it is COMMENT statement.
@@ -135,41 +131,6 @@ public class PgDumpLoader { //NOPMD
     private static final Pattern PATTERN_COMMENT = Pattern.compile(
             "^COMMENT[\\s]+ON[\\s]+.*$",
             Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /**
-     * Pattern for testing whether it is CREATE TYPE statement.
-     */
-    private static final Pattern PATTERN_CREATE_TYPE = Pattern.compile(
-            "^CREATE[\\s]+TYPE[\\s]+.*$",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /**
-     * Pattern for testing whether it is GRANT statement.
-     */
-    private static final Pattern PATTERN_GRANT = Pattern.compile(
-            "^GRANT[\\s]+.*$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /**
-     * Pattern for testing whether it is REVOKE statement.
-     */
-    private static final Pattern PATTERN_REVOKE = Pattern.compile(
-            "^REVOKE[\\s]+.*$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /**
-     * Pattern for testing a dollar quoting tag.
-     */
-    private static final Pattern PATTERN_DOLLAR_TAG= Pattern.compile(
-            "[\"\\s]",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /**
-     * Pattern for testing whether it is CREATE EXTENSION statement.
-     */
-    private static final Pattern PATTERN_CREATE_EXTENSION = Pattern.compile(
-            "^CREATE[\\s]+EXTENSION[\\s]+.*$",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /**
-     * Pattern for testing whether it is CREATE POLICY statement.
-     */
-    private static final Pattern PATTERN_CREATE_POLICY = Pattern.compile(
-            "^CREATE[\\s]+POLICY[\\s]+.*$",
-            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    /**
     /**
      * Storage of unprocessed line part.
      */
@@ -208,24 +169,15 @@ public class PgDumpLoader { //NOPMD
         while (statement != null) {
             if (PATTERN_CREATE_SCHEMA.matcher(statement).matches()) {
                 CreateSchemaParser.parse(database, statement);
-            } else if (PATTERN_CREATE_EXTENSION.matcher(statement).matches()) {
-                CreateExtensionParser.parse(database, statement);
             } else if (PATTERN_DEFAULT_SCHEMA.matcher(statement).matches()) {
                 final Matcher matcher =
                         PATTERN_DEFAULT_SCHEMA.matcher(statement);
                 matcher.matches();
                 database.setDefaultSchema(matcher.group(1));
             } else if (PATTERN_CREATE_TABLE.matcher(statement).matches()) {
-<<<<<<< HEAD
                 CreateTableParser.parse(database, statement);
             } else if (PATTERN_ALTER_TABLE.matcher(statement).matches()) {
                 AlterTableParser.parse(
-=======
-                CreateTableParser.parse(database, statement, ignoreSchemaCreation);
-            } else if (PATTERN_ALTER_TABLE.matcher(statement).matches()
-                    || PATTERN_ALTER_VIEW.matcher(statement).matches()) {
-                AlterRelationParser.parse(
->>>>>>> develop
                         database, statement, outputIgnoredStatements);
             } else if (PATTERN_CREATE_SEQUENCE.matcher(statement).matches()) {
                 CreateSequenceParser.parse(database, statement);
@@ -236,13 +188,14 @@ public class PgDumpLoader { //NOPMD
                 CreateIndexParser.parse(database, statement);
             } else if (PATTERN_CREATE_VIEW.matcher(statement).matches()) {
                 CreateViewParser.parse(database, statement);
+            } else if (PATTERN_ALTER_VIEW.matcher(statement).matches()) {
+                AlterViewParser.parse(
+                        database, statement, outputIgnoredStatements);
             } else if (PATTERN_CREATE_TRIGGER.matcher(statement).matches()) {
                 CreateTriggerParser.parse(
                         database, statement, ignoreSlonyTriggers);
             } else if (PATTERN_CREATE_FUNCTION.matcher(statement).matches()) {
                 CreateFunctionParser.parse(database, statement);
-            } else if (PATTERN_CREATE_TYPE.matcher(statement).matches()) {
-                CreateTypeParser.parse(database, statement);
             } else if (PATTERN_COMMENT.matcher(statement).matches()) {
                 CommentParser.parse(
                         database, statement, outputIgnoredStatements);
@@ -250,14 +203,6 @@ public class PgDumpLoader { //NOPMD
                     || PATTERN_INSERT_INTO.matcher(statement).matches()
                     || PATTERN_UPDATE.matcher(statement).matches()
                     || PATTERN_DELETE_FROM.matcher(statement).matches()) {
-            } else if (PATTERN_GRANT.matcher(statement).matches()) {
-                GrantRevokeParser.parse(database, statement,
-                        outputIgnoredStatements);
-            } else if (PATTERN_REVOKE.matcher(statement).matches()) {
-                GrantRevokeParser.parse(database, statement,
-                        outputIgnoredStatements);
-            } else if (PATTERN_CREATE_POLICY.matcher(statement).matches()) {
-                CreatePolicyParser.parse(database, statement);
                 // we just ignore these statements
             } else if (outputIgnoredStatements) {
                 database.addIgnoredStatement(statement);
@@ -286,31 +231,13 @@ public class PgDumpLoader { //NOPMD
      */
     public static PgDatabase loadDatabaseSchema(final String file,
             final String charsetName, final boolean outputIgnoredStatements,
-<<<<<<< HEAD
             final boolean ignoreSlonyTriggers) {
         try {
             return loadDatabaseSchema(new FileInputStream(file), charsetName,
                     outputIgnoredStatements, ignoreSlonyTriggers);
-=======
-            final boolean ignoreSlonyTriggers, final boolean ignoreSchemaCreation) {
-        if (file.equals("-"))
-            return loadDatabaseSchema(System.in, charsetName,
-                    outputIgnoredStatements, ignoreSlonyTriggers, ignoreSchemaCreation);
-        FileInputStream fis = null;
-        try {
-            fis = new FileInputStream(file);
-            return loadDatabaseSchema(fis, charsetName,
-                    outputIgnoredStatements, ignoreSlonyTriggers, ignoreSchemaCreation);
->>>>>>> develop
         } catch (final FileNotFoundException ex) {
             throw new FileException(MessageFormat.format(
                     Resources.getString("FileNotFound"), file), ex);
-        } finally {
-            if (fis != null) {
-                try {
-                    fis.close();
-                } catch (IOException ex){}
-            }
         }
     }
 
@@ -354,7 +281,7 @@ public class PgDumpLoader { //NOPMD
                 }
 
                 if (sbStatement.length() > 0) {
-                    sbStatement.append(System.getProperty("line.separator"));
+                    sbStatement.append('\n');
                 }
 
                 pos = sbStatement.length();
@@ -402,17 +329,6 @@ public class PgDumpLoader { //NOPMD
 
             pos = sbStatement.indexOf("--", pos + 1);
         }
-
-        int endPos = sbStatement.indexOf("*/");
-        while (endPos >= 0) {
-            if (!isQuoted(sbStatement, endPos)) {
-                int startPos = sbStatement.lastIndexOf("/*", endPos);
-                if (startPos < endPos && !isQuoted(sbStatement, startPos)) {
-                    sbStatement.replace(startPos, endPos + 2, "");
-                }
-            }
-            endPos = sbStatement.indexOf("*/", endPos+2);
-        }
     }
 
     /**
@@ -428,63 +344,36 @@ public class PgDumpLoader { //NOPMD
     private static boolean isQuoted(final StringBuilder sbString,
             final int pos) {
         boolean isQuoted = false;
-        boolean insideDoubleQuotes = false;
-        boolean insideSingeQuote = false; // Determine if double quote is inside of a single quote.
-        
+
         for (int curPos = 0; curPos < pos; curPos++) {
-            // Check if the quote is inside of a double quotes
-            if (sbString.charAt(curPos) == '\"' && !insideSingeQuote ){
-                insideDoubleQuotes = !insideDoubleQuotes;
-            }
-            if (sbString.charAt(curPos) == '\'' && !insideDoubleQuotes ){
-                insideSingeQuote = !insideSingeQuote;
-            }
-            if(!insideDoubleQuotes){
-                if (sbString.charAt(curPos) == '\'') {
+            if (sbString.charAt(curPos) == '\'') {
+                isQuoted = !isQuoted;
+
+                // if quote was escaped by backslash, it's like double quote
+                if (pos > 0 && sbString.charAt(pos - 1) == '\\') {
                     isQuoted = !isQuoted;
-
-                    // if quote was escaped by backslash, it's like double quote
-                    if (pos > 0 && sbString.charAt(pos - 1) == '\\') {
-                        isQuoted = !isQuoted;
-                    }
-                } else if (sbString.charAt(curPos) == '$' && !isQuoted) {
-                    final int endPos = sbString.indexOf("$", curPos + 1);
-
-                    if (endPos == -1) {
-                        return false;
-                    }
-
-                    final String tag = sbString.substring(curPos, endPos + 1);
-
-                    if (!isCorrectTag(tag)) {
-                        return false;
-                    }
-
-                    final int endTagPos = sbString.indexOf(tag, endPos + 1);
-
-                    // if end tag was not found or it was found after the checked
-                    // position, it's quoted
-                    if (endTagPos == -1 || endTagPos > pos) {
-                        return true;
-                    }
-
-                    curPos = endTagPos + tag.length() - 1;
                 }
+            } else if (sbString.charAt(curPos) == '$' && !isQuoted) {
+                final int endPos = sbString.indexOf("$", curPos + 1);
+
+                if (endPos == -1) {
+                    return true;
+                }
+
+                final String tag = sbString.substring(curPos, endPos + 1);
+                final int endTagPos = sbString.indexOf(tag, endPos + 1);
+
+                // if end tag was not found or it was found after the checked
+                // position, it's quoted
+                if (endTagPos == -1 || endTagPos > pos) {
+                    return true;
+                }
+
+                curPos = endTagPos + tag.length() - 1;
             }
         }
 
         return isQuoted;
-    }
-
-    /**
-     * Checks whether dollar quoting tag is correct.
-     *
-     * @param tag tag to be checked
-     *
-     * @return true if the tag is correct, otherwise false
-     */
-    private static boolean isCorrectTag(final String tag) {
-        return !PATTERN_DOLLAR_TAG.matcher(tag).find();
     }
 
     /**

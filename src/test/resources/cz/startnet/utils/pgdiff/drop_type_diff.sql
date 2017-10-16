@@ -1,5 +1,0 @@
-DROP TABLE IF EXISTS t1;
-
-DROP TYPE IF EXISTS bug_status;
-
-DROP TYPE IF EXISTS descr_type;

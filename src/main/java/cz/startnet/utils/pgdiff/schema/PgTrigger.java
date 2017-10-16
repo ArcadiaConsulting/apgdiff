@@ -9,8 +9,6 @@ import cz.startnet.utils.pgdiff.PgDiffUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Stores trigger information.
@@ -18,52 +16,6 @@ import java.util.Map;
  * @author fordfrog
  */
 public class PgTrigger {
-
-    /**
-     * Enumeration of when, with respect to event, a trigger should fire.
-     * e.g. BEFORE, AFTER or INSTEAD OF an event.
-     */
-    public enum EventTimeQualification {
-        before,
-        after,
-        instead_of;
-
-        private static final Map<EventTimeQualification, String> stringRepresentation;
-
-        static {
-            HashMap<EventTimeQualification, String> aMap = new HashMap<EventTimeQualification, String>();
-            aMap.put(EventTimeQualification.before, "BEFORE");
-            aMap.put(EventTimeQualification.after, "AFTER");
-            aMap.put(EventTimeQualification.instead_of, "INSTEAD OF");
-
-            stringRepresentation = Collections.unmodifiableMap(aMap);
-        }
-
-        public static String toString(EventTimeQualification eventTimeQualification) {
-            return stringRepresentation.get(eventTimeQualification);
-        }
-    }
-    
-    /**
-     * Whether the trigger is contraint.
-     */
-    private boolean constraint;
-    
-    /**
-     * This controls whether the constraint can be deferred. 
-     * A constraint that is not deferrable will be checked immediately after every command. 
-     * Checking of constraints that are deferrable can be postponed until the end of the transaction.
-     */
-    
-    private boolean deferrable;
-    
-    /**
-     * If a constraint is deferrable, this clause specifies the default time to check the constraint. 
-     * If the constraint is INITIALLY IMMEDIATE, it is checked after each statement. 
-     * This is the default. If the constraint is INITIALLY DEFERRED, it is checked only at the end of the transaction.
-     */
-    
-    private boolean deferred;
 
     /**
      * Function name and arguments that should be fired on the trigger.
@@ -74,14 +26,14 @@ public class PgTrigger {
      */
     private String name;
     /**
-     * Name of the relation the trigger is defined on.
+     * Name of the table the trigger is defined on.
      */
-    private String relationName;
+    private String tableName;
     /**
-     * Whether the trigger should be fired BEFORE, AFTER or INSTEAD OF an event.
-     * Default is before.
+     * Whether the trigger should be fired BEFORE or AFTER action. Default is
+     * before.
      */
-    private EventTimeQualification eventTimeQualification = EventTimeQualification.before;
+    private boolean before = true;
     /**
      * Whether the trigger should be fired FOR EACH ROW or FOR EACH STATEMENT.
      * Default is FOR EACH STATEMENT.
@@ -118,21 +70,21 @@ public class PgTrigger {
     private String comment;
 
     /**
-     * Setter for {@link #eventTimeQualification}.
+     * Setter for {@link #before}.
      *
-     * @param eventTimeQualification {@link #eventTimeQualification}
+     * @param before {@link #before}
      */
-    public void setEventTimeQualification(final EventTimeQualification eventTimeQualification) {
-        this.eventTimeQualification = eventTimeQualification;
+    public void setBefore(final boolean before) {
+        this.before = before;
     }
 
     /**
-     * Getter for {@link #eventTimeQualification}.
+     * Getter for {@link #before}.
      *
-     * @return {@link #eventTimeQualification}
+     * @return {@link #before}
      */
-    public EventTimeQualification getEventTimeQualification() {
-        return eventTimeQualification;
+    public boolean isBefore() {
+        return before;
     }
 
     /**
@@ -160,17 +112,13 @@ public class PgTrigger {
      */
     public String getCreationSQL() {
         final StringBuilder sbSQL = new StringBuilder(100);
-        sbSQL.append("CREATE");
-        if(isConstraint())
-        	sbSQL.append(" CONSTRAINT");
-        sbSQL.append(" TRIGGER ");
+        sbSQL.append("CREATE TRIGGER ");
         sbSQL.append(PgDiffUtils.getQuotedName(getName()));
-        sbSQL.append(System.getProperty("line.separator"));
-        sbSQL.append("\t");
-        sbSQL.append(EventTimeQualification.toString(getEventTimeQualification()));
+        sbSQL.append("\n\t");
+        sbSQL.append(isBefore() ? "BEFORE" : "AFTER");
 
         boolean firstEvent = true;
-        
+
         if (isOnInsert()) {
             sbSQL.append(" INSERT");
             firstEvent = false;
@@ -220,44 +168,25 @@ public class PgTrigger {
         }
 
         sbSQL.append(" ON ");
-        sbSQL.append(PgDiffUtils.getQuotedName(getRelationName()));
-        if(isConstraint()){
-        	sbSQL.append(System.getProperty("line.separator"));
-        	sbSQL.append("\t");
-        	if(isDeferrable()){
-        		sbSQL.append(" DEFERRABLE ");
-        		if(isDeferred()){
-        			sbSQL.append(" INITIALLY DEFERRED ");
-        		}else{
-        			sbSQL.append(" INITIALLY IMMEDIATE ");
-        		}
-        	}else {
-        		sbSQL.append(" NOT DEFERRABLE ");
-        	}
-        }
-        sbSQL.append(System.getProperty("line.separator"));
-        sbSQL.append("\tFOR EACH ");
+        sbSQL.append(PgDiffUtils.getQuotedName(getTableName()));
+        sbSQL.append("\n\tFOR EACH ");
         sbSQL.append(isForEachRow() ? "ROW" : "STATEMENT");
 
         if (when != null && !when.isEmpty()) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("\tWHEN (");
+            sbSQL.append("\n\tWHEN (");
             sbSQL.append(when);
             sbSQL.append(')');
         }
 
-        sbSQL.append(System.getProperty("line.separator"));
-        sbSQL.append("\tEXECUTE PROCEDURE ");
+        sbSQL.append("\n\tEXECUTE PROCEDURE ");
         sbSQL.append(getFunction());
         sbSQL.append(';');
 
         if (comment != null && !comment.isEmpty()) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("COMMENT ON TRIGGER ");
+            sbSQL.append("\n\nCOMMENT ON TRIGGER ");
             sbSQL.append(PgDiffUtils.getQuotedName(name));
             sbSQL.append(" ON ");
-            sbSQL.append(PgDiffUtils.getQuotedName(relationName));
+            sbSQL.append(PgDiffUtils.getQuotedName(tableName));
             sbSQL.append(" IS ");
             sbSQL.append(comment);
             sbSQL.append(';');
@@ -272,62 +201,8 @@ public class PgTrigger {
      * @return created SQL
      */
     public String getDropSQL() {
-        return "DROP TRIGGER " + PgDiffUtils.getDropIfExists() + PgDiffUtils.getQuotedName(getName()) + " ON "
-                + PgDiffUtils.getQuotedName(getRelationName()) + ";";
-    }
-    
-    /**
-     * Setter for {@link #constraint}.
-     *
-     * @param constraint {@link #constraint}
-     */
-    public void setConstraint(final boolean constraint) {
-        this.constraint = constraint;
-    }
-
-    /**
-     * Getter for {@link #constraint}.
-     *
-     * @return {@link #constraint}
-     */
-    public boolean isConstraint() {
-        return constraint;
-    }
-    
-    /**
-     * Setter for {@link #deferrable}.
-     *
-     * @param deferrable {@link #deferrable}
-     */
-    public void setDeferrable(final boolean deferrable) {
-        this.deferrable = deferrable;
-    }
-
-    /**
-     * Getter for {@link #deferrable}.
-     *
-     * @return {@link #deferrable}
-     */
-    public boolean isDeferrable() {
-        return deferrable;
-    }
-    
-    /**
-     * Setter for {@link #deferred}.
-     *
-     * @param deferred {@link #deferred}
-     */
-    public void setDeferred(final boolean deferred) {
-        this.deferred = deferred;
-    }
-
-    /**
-     * Getter for {@link #deferred}.
-     *
-     * @return {@link #deferred}
-     */
-    public boolean isDeferred() {
-        return deferred;
+        return "DROP TRIGGER " + PgDiffUtils.getQuotedName(getName()) + " ON "
+                + PgDiffUtils.getQuotedName(getTableName()) + ";";
     }
 
     /**
@@ -457,21 +332,21 @@ public class PgTrigger {
     }
 
     /**
-     * Setter for {@link #relationName}.
+     * Setter for {@link #tableName}.
      *
-     * @param relationName {@link #relationName}
+     * @param tableName {@link #tableName}
      */
-    public void setRelationName(final String relationName) {
-        this.relationName = relationName;
+    public void setTableName(final String tableName) {
+        this.tableName = tableName;
     }
 
     /**
-     * Getter for {@link #relationName}.
+     * Getter for {@link #tableName}.
      *
-     * @return {@link #relationName}
+     * @return {@link #tableName}
      */
-    public String getRelationName() {
-        return relationName;
+    public String getTableName() {
+        return tableName;
     }
 
     /**
@@ -518,7 +393,7 @@ public class PgTrigger {
             equals = true;
         } else if (object instanceof PgTrigger) {
             final PgTrigger trigger = (PgTrigger) object;
-            equals = (eventTimeQualification == trigger.getEventTimeQualification())
+            equals = (before == trigger.isBefore())
                     && (forEachRow == trigger.isForEachRow())
                     && function.equals(trigger.getFunction())
                     && name.equals(trigger.getName())
@@ -526,10 +401,7 @@ public class PgTrigger {
                     && (onInsert == trigger.isOnInsert())
                     && (onUpdate == trigger.isOnUpdate())
                     && (onTruncate == trigger.isOnTruncate())
-                    && relationName.equals(trigger.getRelationName())
-                    && constraint == trigger.isConstraint()
-                    && deferrable == trigger.isDeferrable()
-                    && deferred == trigger.isDeferred();
+                    && tableName.equals(trigger.getTableName());
 
             if (equals) {
                 final List<String> sorted1 =
@@ -548,8 +420,8 @@ public class PgTrigger {
 
     @Override
     public int hashCode() {
-        return (getClass().getName() + "|" + eventTimeQualification + "|" + forEachRow + "|"
+        return (getClass().getName() + "|" + before + "|" + forEachRow + "|"
                 + function + "|" + name + "|" + onDelete + "|" + onInsert + "|"
-                + onUpdate + "|" + onTruncate + "|" + relationName).hashCode();
+                + onUpdate + "|" + onTruncate + "|" + tableName).hashCode();
     }
 }

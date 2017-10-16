@@ -17,39 +17,27 @@ import cz.startnet.utils.pgdiff.schema.PgTrigger;
 public class CreateTriggerParser {
 
     /**
-     * Parses CREATE [CONSTRAINT] TRIGGER statement.
+     * Parses CREATE TRIGGER statement.
      *
      * @param database            database
-     * @param statement           CREATE [CONSTRAINT] TRIGGER statement
+     * @param statement           CREATE TRIGGER statement
      * @param ignoreSlonyTriggers whether Slony triggers should be ignored
      */
     public static void parse(final PgDatabase database,
             final String statement, final boolean ignoreSlonyTriggers) {
-
-    	final PgTrigger trigger = new PgTrigger();
         final Parser parser = new Parser(statement);
-     
-        parser.expect("CREATE");
-        if(parser.expectOptional("CONSTRAINT"))
-        	trigger.setConstraint(true);
-        parser.expect("TRIGGER");
-        
+        parser.expect("CREATE", "TRIGGER");
+
         final String triggerName = parser.parseIdentifier();
         final String objectName = ParserUtils.getObjectName(triggerName);
 
+        final PgTrigger trigger = new PgTrigger();
         trigger.setName(objectName);
-        
-        if(trigger.isConstraint()){
-        	parser.expect("AFTER");
-        	trigger.setEventTimeQualification(PgTrigger.EventTimeQualification.after);
-        } else {
-        	if (parser.expectOptional("BEFORE")) {
-        		trigger.setEventTimeQualification(PgTrigger.EventTimeQualification.before);
-        	} else if (parser.expectOptional("AFTER")) {
-        		trigger.setEventTimeQualification(PgTrigger.EventTimeQualification.after);
-        	} else if (parser.expectOptional("INSTEAD OF")) {
-        		trigger.setEventTimeQualification(PgTrigger.EventTimeQualification.instead_of);
-        	}
+
+        if (parser.expectOptional("BEFORE")) {
+            trigger.setBefore(true);
+        } else if (parser.expectOptional("AFTER")) {
+            trigger.setBefore(false);
         }
 
         boolean first = true;
@@ -82,26 +70,9 @@ public class CreateTriggerParser {
 
         parser.expect("ON");
 
-        final String relationName = parser.parseIdentifier();
+        final String tableName = parser.parseIdentifier();
 
-        trigger.setRelationName(ParserUtils.getObjectName(relationName));
-        
-        if(trigger.isConstraint()){
-        	if(parser.expectOptional("DEFERRABLE")){
-        		trigger.setDeferrable(true);
-        		if(parser.expectOptional("INITIALLY","DEFERRED")){
-        			trigger.setDeferred(true);
-        		}else if(parser.expectOptional("INITIALLY","IMMEDIATE")){
-        			trigger.setDeferred(false);
-        		}else{
-        			trigger.setDeferred(false);
-        		}
-        	}else if(parser.expectOptional("NOT","DEFERRABLE")){
-        		trigger.setDeferrable(false);
-        	}else {
-        		trigger.setDeferrable(false);
-        	}
-        }
+        trigger.setTableName(ParserUtils.getObjectName(tableName));
 
         if (parser.expectOptional("FOR")) {
             parser.expectOptional("EACH");
@@ -129,9 +100,9 @@ public class CreateTriggerParser {
                 || "_slony_denyaccess".equals(trigger.getName()));
 
         if (!ignoreSlonyTrigger) {
-            final PgSchema schema = database.getSchema(
-                    ParserUtils.getSchemaName(relationName, database));
-            schema.getRelation(trigger.getRelationName()).addTrigger(trigger);
+            final PgSchema tableSchema = database.getSchema(
+                    ParserUtils.getSchemaName(tableName, database));
+            tableSchema.getTable(trigger.getTableName()).addTrigger(trigger);
         }
     }
 

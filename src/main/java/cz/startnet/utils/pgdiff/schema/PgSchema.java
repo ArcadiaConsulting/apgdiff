@@ -28,15 +28,15 @@ public class PgSchema {
     @SuppressWarnings("CollectionWithoutInitialCapacity")
     private final List<PgSequence> sequences = new ArrayList<PgSequence>();
     /**
-     * List of rels defined in the schema.
+     * List of tables defined in the schema.
      */
     @SuppressWarnings("CollectionWithoutInitialCapacity")
-    private final List<PgRelation> rels = new ArrayList<PgRelation>();
+    private final List<PgTable> tables = new ArrayList<PgTable>();
     /**
-     * List of types defined in the schema.
+     * List of views defined in the schema.
      */
     @SuppressWarnings("CollectionWithoutInitialCapacity")
-    private final List<PgType> types = new ArrayList<PgType>();
+    private final List<PgView> views = new ArrayList<PgView>();
     /**
      * List of indexes defined in the schema.
      */
@@ -136,7 +136,6 @@ public class PgSchema {
     public String getCreationSQL() {
         final StringBuilder sbSQL = new StringBuilder(50);
         sbSQL.append("CREATE SCHEMA ");
-        sbSQL.append(PgDiffUtils.getCreateIfNotExists());
         sbSQL.append(PgDiffUtils.getQuotedName(getName()));
 
         if (getAuthorization() != null) {
@@ -147,9 +146,7 @@ public class PgSchema {
         sbSQL.append(';');
 
         if (comment != null && !comment.isEmpty()) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("COMMENT ON SCHEMA ");
+            sbSQL.append("\n\nCOMMENT ON SCHEMA ");
             sbSQL.append(PgDiffUtils.getQuotedName(name));
             sbSQL.append(" IS ");
             sbSQL.append(comment);
@@ -273,23 +270,6 @@ public class PgSchema {
     }
 
     /**
-     * Finds table/view according to specified {@code name}.
-     *
-     * @param name name of the table/view to be searched
-     *
-     * @return found table or null if no such table has been found
-     */
-    public PgRelation getRelation(final String name) {
-        for (PgRelation rel : rels) {
-            if (rel.getName().equals(name)) {
-                return rel;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Finds table according to specified table {@code name}.
      *
      * @param name name of the table to be searched
@@ -297,37 +277,22 @@ public class PgSchema {
      * @return found table or null if no such table has been found
      */
     public PgTable getTable(final String name) {
-        PgRelation rel = this.getRelation(name);
-        if (rel == null || !(rel instanceof PgTable))
-            return null;
-        return (PgTable) rel;
-    }
-
-    /**
-     * Get a list of tables from {@link #rels}.
-     *
-     * @return list of tables
-     */
-    public List<PgTable> getTables() {
-        @SuppressWarnings("CollectionWithoutInitialCapacity")
-        final List<PgTable> list = new ArrayList<PgTable>();
-
-        for (PgRelation rel : rels) {
-            if (rel instanceof PgTable) {
-                list.add((PgTable) rel);
+        for (PgTable table : tables) {
+            if (table.getName().equals(name)) {
+                return table;
             }
         }
 
-        return list;
+        return null;
     }
 
     /**
-     * Getter for {@link #rels}. The list cannot be modified.
+     * Getter for {@link #tables}. The list cannot be modified.
      *
-     * @return {@link #rels}
+     * @return {@link #tables}
      */
-    public List<PgRelation> getRels() {
-        return Collections.unmodifiableList(rels);
+    public List<PgTable> getTables() {
+        return Collections.unmodifiableList(tables);
     }
 
     /**
@@ -338,28 +303,22 @@ public class PgSchema {
      * @return found view or null if no such view has been found
      */
     public PgView getView(final String name) {
-        PgRelation rel = this.getRelation(name);
-        if (rel == null || !(rel instanceof PgView))
-            return null;
-        return (PgView) rel;
-    }
-
-    /**
-     * Get a list of views from {@link #rels}.
-     *
-     * @return list of views
-     */
-    public List<PgView> getViews() {
-        @SuppressWarnings("CollectionWithoutInitialCapacity")
-        final List<PgView> list = new ArrayList<PgView>();
-
-        for (PgRelation rel : rels) {
-            if (rel instanceof PgView) {
-                list.add((PgView) rel);
+        for (PgView view : views) {
+            if (view.getName().equals(name)) {
+                return view;
             }
         }
 
-        return list;
+        return null;
+    }
+
+    /**
+     * Getter for {@link #views}. The list cannot be modified.
+     *
+     * @return {@link #views}
+     */
+    public List<PgView> getViews() {
+        return Collections.unmodifiableList(views);
     }
 
     /**
@@ -399,66 +358,21 @@ public class PgSchema {
     }
 
     /**
-     * Adds {@code rel} table or view to the list of rels.
+     * Adds {@code table} to the list of tables.
      *
-     * @param rel relation
+     * @param table table
      */
-    public void addRelation(final PgRelation rel) {
-        rels.add(rel);
+    public void addTable(final PgTable table) {
+        tables.add(table);
     }
 
     /**
-     * Adds {@code type} to the list of types.
+     * Adds {@code view} to the list of views.
      *
-     * @param type type
+     * @param view view
      */
-    public void addType(final PgType type) {
-        types.add(type);
-    }
-
-    /**
-     * Returns a list of types
-     *
-     * @return types List of PgType
-     */
-    public List<PgType> getTypes() {
-        return types;
-    }
-
-    /**
-     * Finds type according to specified name {@code name}.
-     *
-     * @param name name of the type to be searched
-     *
-     * @return found type or null if no such table has been found
-     */
-    public PgType getType(final String name) {
-        for (PgType type : types) {
-            if (type.getName().equals(name)) {
-                return type;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns true if schema contains type with given {@code name}, otherwise
-     * false.
-     *
-     * @param name name of the table
-     *
-     * @return true if schema contains table with given {@code name}, otherwise
-     * false.
-     */
-    public boolean containsType(final String name) {
-        for (PgType type : types) {
-            if (type.getName().equals(name)) {
-                return true;
-            }
-        }
-
-        return false;
+    public void addView(final PgView view) {
+        views.add(view);
     }
 
     /**
@@ -509,7 +423,13 @@ public class PgSchema {
      *         false.
      */
     public boolean containsTable(final String name) {
-        return getTable(name) != null;
+        for (PgTable table : tables) {
+            if (table.getName().equals(name)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -522,6 +442,12 @@ public class PgSchema {
      *         false.
      */
     public boolean containsView(final String name) {
-        return getView(name) != null;
+        for (PgView view : views) {
+            if (view.getName().equals(name)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

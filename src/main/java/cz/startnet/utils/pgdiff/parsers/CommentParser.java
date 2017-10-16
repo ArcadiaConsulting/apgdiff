@@ -4,8 +4,16 @@
 package cz.startnet.utils.pgdiff.parsers;
 
 import cz.startnet.utils.pgdiff.Resources;
-import cz.startnet.utils.pgdiff.schema.*;
-
+import cz.startnet.utils.pgdiff.schema.PgColumn;
+import cz.startnet.utils.pgdiff.schema.PgConstraint;
+import cz.startnet.utils.pgdiff.schema.PgDatabase;
+import cz.startnet.utils.pgdiff.schema.PgFunction;
+import cz.startnet.utils.pgdiff.schema.PgIndex;
+import cz.startnet.utils.pgdiff.schema.PgSchema;
+import cz.startnet.utils.pgdiff.schema.PgSequence;
+import cz.startnet.utils.pgdiff.schema.PgTable;
+import cz.startnet.utils.pgdiff.schema.PgTrigger;
+import cz.startnet.utils.pgdiff.schema.PgView;
 import java.text.MessageFormat;
 
 /**
@@ -236,22 +244,37 @@ public class CommentParser {
             final PgDatabase database) {
         final String columnName = parser.parseIdentifier();
         final String objectName = ParserUtils.getObjectName(columnName);
-        final String relName = ParserUtils.getSecondObjectName(columnName);
+        final String tableName = ParserUtils.getSecondObjectName(columnName);
         final String schemaName = ParserUtils.getThirdObjectName(columnName);
         final PgSchema schema = database.getSchema(schemaName);
 
-        final PgRelation rel = schema.getRelation(relName);
-        final PgColumn column = rel.getColumn(objectName);
+        final PgTable table = schema.getTable(tableName);
 
-        if (column == null) {
-            throw new ParserException(MessageFormat.format(
-                    Resources.getString("CannotFindColumnInTable"),
-                    columnName, rel.getName()));
+        if (table == null) {
+            final PgView view = schema.getView(tableName);
+            parser.expect("IS");
+
+            final String comment = getComment(parser);
+
+            if (comment == null) {
+                view.removeColumnComment(objectName);
+            } else {
+                view.addColumnComment(objectName, comment);
+            }
+            parser.expect(";");
+        } else {
+            final PgColumn column = table.getColumn(objectName);
+
+            if (column == null) {
+                throw new ParserException(MessageFormat.format(
+                        Resources.getString("CannotFindColumnInTable"),
+                        columnName, table.getName()));
+            }
+
+            parser.expect("IS");
+            column.setComment(getComment(parser));
+            parser.expect(";");
         }
-
-        parser.expect("IS");
-        column.setComment(getComment(parser));
-        parser.expect(";");
     }
 
     /**

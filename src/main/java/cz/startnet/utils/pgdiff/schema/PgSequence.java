@@ -5,10 +5,6 @@
  */
 package cz.startnet.utils.pgdiff.schema;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import cz.startnet.utils.pgdiff.PgDiffUtils;
 
 /**
@@ -54,11 +50,6 @@ public class PgSequence {
      * Comment.
      */
     private String comment;
-    /**
-     * List of privileges defined on the sequence.
-     */
-    @SuppressWarnings("CollectionWithoutInitialCapacity")
-    private final List<PgSequencePrivilege> privileges = new ArrayList<PgSequencePrivilege>();
 
     /**
      * Creates a new PgSequence object.
@@ -113,25 +104,19 @@ public class PgSequence {
     public String getCreationSQL() {
         final StringBuilder sbSQL = new StringBuilder(100);
         sbSQL.append("CREATE SEQUENCE ");
-        
-        sbSQL.append(PgDiffUtils.getCreateIfNotExists());
-        
         sbSQL.append(PgDiffUtils.getQuotedName(name));
 
         if (startWith != null) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("\tSTART WITH ");
+            sbSQL.append("\n\tSTART WITH ");
             sbSQL.append(startWith);
         }
 
         if (increment != null) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("\tINCREMENT BY ");
+            sbSQL.append("\n\tINCREMENT BY ");
             sbSQL.append(increment);
         }
 
-        sbSQL.append(System.getProperty("line.separator"));
-        sbSQL.append("\t");
+        sbSQL.append("\n\t");
 
         if (maxValue == null) {
             sbSQL.append("NO MAXVALUE");
@@ -140,8 +125,7 @@ public class PgSequence {
             sbSQL.append(maxValue);
         }
 
-        sbSQL.append(System.getProperty("line.separator"));
-        sbSQL.append("\t");
+        sbSQL.append("\n\t");
 
         if (minValue == null) {
             sbSQL.append("NO MINVALUE");
@@ -151,22 +135,18 @@ public class PgSequence {
         }
 
         if (cache != null) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("\tCACHE ");
+            sbSQL.append("\n\tCACHE ");
             sbSQL.append(cache);
         }
 
         if (cycle) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("\tCYCLE");
+            sbSQL.append("\n\tCYCLE");
         }
 
         sbSQL.append(';');
 
         if (comment != null && !comment.isEmpty()) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("COMMENT ON SEQUENCE ");
+            sbSQL.append("\n\nCOMMENT ON SEQUENCE ");
             sbSQL.append(PgDiffUtils.getQuotedName(name));
             sbSQL.append(" IS ");
             sbSQL.append(comment);
@@ -188,8 +168,7 @@ public class PgSequence {
         sbSQL.append(PgDiffUtils.getQuotedName(name));
 
         if (ownedBy != null && !ownedBy.isEmpty()) {
-            sbSQL.append(System.getProperty("line.separator"));
-            sbSQL.append("\tOWNED BY ");
+            sbSQL.append("\n\tOWNED BY ");
             sbSQL.append(ownedBy);
         }
 
@@ -222,7 +201,7 @@ public class PgSequence {
      * @return created SQL
      */
     public String getDropSQL() {
-        return "DROP SEQUENCE " + PgDiffUtils.getDropIfExists() + PgDiffUtils.getQuotedName(getName()) + ";";
+        return "DROP SEQUENCE " + PgDiffUtils.getQuotedName(getName()) + ";";
     }
 
     /**
@@ -331,22 +310,5 @@ public class PgSequence {
      */
     public void setOwnedBy(final String ownedBy) {
         this.ownedBy = ownedBy;
-    }
-
-    public List<PgSequencePrivilege> getPrivileges() {
-        return Collections.unmodifiableList(privileges);
-    }
-
-    public PgSequencePrivilege getPrivilege(final String roleName) {
-        for (PgSequencePrivilege privilege : privileges) {
-            if (privilege.getRoleName().equals(roleName)) {
-                return privilege;
-            }
-        }
-        return null;
-    }
-
-    public void addPrivilege(final PgSequencePrivilege privilege) {
-        privileges.add(privilege);
     }
 }

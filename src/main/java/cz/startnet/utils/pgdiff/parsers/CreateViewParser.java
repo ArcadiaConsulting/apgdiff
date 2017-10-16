@@ -29,10 +29,8 @@ public class CreateViewParser {
     public static void parse(final PgDatabase database,
             final String statement) {
         final Parser parser = new Parser(statement);
-
         parser.expect("CREATE");
         parser.expectOptional("OR", "REPLACE");
-        final boolean materialized = parser.expectOptional("MATERIALIZED");
         parser.expect("VIEW");
 
         final String viewName = parser.parseIdentifier();
@@ -53,8 +51,7 @@ public class CreateViewParser {
         final String query = parser.getRest();
 
         final PgView view = new PgView(ParserUtils.getObjectName(viewName));
-        view.setMaterialized(materialized);
-        view.setDeclaredColumnNames(columnNames);
+        view.setColumnNames(columnNames);
         view.setQuery(query);
 
         final String schemaName = ParserUtils.getSchemaName(viewName, database);
@@ -66,7 +63,7 @@ public class CreateViewParser {
                     statement));
         }
 
-        schema.addRelation(view);
+        schema.addView(view);
     }
 
     /**

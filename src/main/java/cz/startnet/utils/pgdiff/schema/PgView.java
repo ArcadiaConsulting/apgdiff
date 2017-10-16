@@ -7,6 +7,7 @@ package cz.startnet.utils.pgdiff.schema;
 
 import cz.startnet.utils.pgdiff.PgDiffUtils;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -14,20 +15,34 @@ import java.util.List;
  *
  * @author fordfrog
  */
-public class PgView extends PgRelation {
+public class PgView {
 
     /**
-     * Were column names explicitly declared as part of the view?
+     * List of column names.
      */
-    private boolean declareColumnNames = false;
+    private List<String> columnNames;
     /**
-     * Is this a MATERIALIZED view?
+     * Name of the view.
      */
-    private boolean materialized;
+    private final String name;
     /**
      * SQL query of the view.
      */
     private String query;
+    /**
+     * List of optional column default values.
+     */
+    private final List<DefaultValue> defaultValues =
+            new ArrayList<DefaultValue>(0);
+    /**
+     * List of optional column comments.
+     */
+    private final List<ColumnComment> columnComments =
+            new ArrayList<ColumnComment>(0);
+    /**
+     * Comment.
+     */
+    private String comment;
 
     /**
      * Creates a new PgView object.
@@ -35,58 +50,44 @@ public class PgView extends PgRelation {
      * @param name {@link #name}
      */
     public PgView(final String name) {
-        setName(name);
+        this.name = name;
     }
 
     /**
-     * Sets the list of declared column names for the view.
+     * Setter for {@link #columnNames}.
      *
-     * @param columnNames list of column names
+     * @param columnNames {@link #columnNames}
      */
-    public void setDeclaredColumnNames(final List<String> columnNames) {
-        // Can only be set once for a view, before defaults/comments are set
-        assert !declareColumnNames;
-        assert columns.isEmpty();
-
-        if (columnNames == null || columnNames.isEmpty())
-            return;
-
-        declareColumnNames = true;
-
-        for (final String colName: columnNames) {
-            addColumn(new PgColumn(colName));
-        }
+    @SuppressWarnings("AssignmentToCollectionOrArrayFieldFromParameter")
+    public void setColumnNames(final List<String> columnNames) {
+        this.columnNames = columnNames;
     }
 
     /**
-     * Returns a list of column names if the names were declared along with the view, null otherwise.
+     * Getter for {@link #columnNames}. The list cannot be modified.
      *
-     * @return list of column names or null
+     * @return {@link #columnNames}
      */
-    public List<String> getDeclaredColumnNames() {
-        @SuppressWarnings("CollectionWithoutInitialCapacity")
-        final List<String> list = new ArrayList<String>();
-
-        if (!declareColumnNames)
-            return null;
-
-        for (PgColumn column : columns) {
-            list.add(column.getName());
-        }
-
-        return list;
+    public List<String> getColumnNames() {
+        return Collections.unmodifiableList(columnNames);
     }
 
     /**
-     * Returns relation kind for CREATE/ALTER/DROP commands.
+     * Getter for {@link #comment}.
      *
-     * @return relation kind
+     * @return {@link #comment}
      */
-    public String getRelationKind() {
-        if (materialized)
-            return "MATERIALIZED VIEW";
-        else
-            return "VIEW";
+    public String getComment() {
+        return comment;
+    }
+
+    /**
+     * Setter for {@link #comment}.
+     *
+     * @param comment {@link #comment}
+     */
+    public void setComment(final String comment) {
+        this.comment = comment;
     }
 
     /**
@@ -96,72 +97,76 @@ public class PgView extends PgRelation {
      */
     public String getCreationSQL() {
         final StringBuilder sbSQL = new StringBuilder(query.length() * 2);
-        sbSQL.append("CREATE ");
-        sbSQL.append(getRelationKind());
-        sbSQL.append(' ');
+        sbSQL.append("CREATE VIEW ");
         sbSQL.append(PgDiffUtils.getQuotedName(name));
 
-        if (declareColumnNames) {
-            assert columns != null && !columns.isEmpty();
-
+        if (columnNames != null && !columnNames.isEmpty()) {
             sbSQL.append(" (");
 
-            for (int i = 0; i < columns.size(); i++) {
+            for (int i = 0; i < columnNames.size(); i++) {
                 if (i > 0) {
                     sbSQL.append(", ");
                 }
 
-                sbSQL.append(PgDiffUtils.getQuotedName(columns.get(i).getName()));
+                sbSQL.append(PgDiffUtils.getQuotedName(columnNames.get(i)));
             }
             sbSQL.append(')');
         }
 
-        sbSQL.append(" AS");
-        sbSQL.append(System.getProperty("line.separator"));
-        sbSQL.append("\t");
+        sbSQL.append(" AS\n\t");
         sbSQL.append(query);
         sbSQL.append(';');
 
-        /* Column default values */
-        for (final PgColumn col : getColumns()) {
-            String defaultValue = col.getDefaultValue();
+        for (final DefaultValue defaultValue : defaultValues) {
+            sbSQL.append("\n\nALTER VIEW ");
+            sbSQL.append(PgDiffUtils.getQuotedName(name));
+            sbSQL.append(" ALTER COLUMN ");
+            sbSQL.append(
+                    PgDiffUtils.getQuotedName(defaultValue.getColumnName()));
+            sbSQL.append(" SET DEFAULT ");
+            sbSQL.append(defaultValue.getDefaultValue());
+            sbSQL.append(';');
+        }
 
-            if (defaultValue != null && !defaultValue.isEmpty()) {
-                sbSQL.append(System.getProperty("line.separator"));
-                sbSQL.append(System.getProperty("line.separator"));
-                sbSQL.append("ALTER ");
-                sbSQL.append(getRelationKind());
-                sbSQL.append(' ');
-                sbSQL.append(PgDiffUtils.getQuotedName(name));
-                sbSQL.append(" ALTER COLUMN ");
-                sbSQL.append(PgDiffUtils.getQuotedName(col.getName()));
-                sbSQL.append(" SET DEFAULT ");
-                sbSQL.append(defaultValue);
+        if (comment != null && !comment.isEmpty()) {
+            sbSQL.append("\n\nCOMMENT ON VIEW ");
+            sbSQL.append(PgDiffUtils.getQuotedName(name));
+            sbSQL.append(" IS ");
+            sbSQL.append(comment);
+            sbSQL.append(';');
+        }
+
+        for (final ColumnComment columnComment : columnComments) {
+            if (columnComment.getComment() != null
+                    && !columnComment.getComment().isEmpty()) {
+                sbSQL.append("\n\nCOMMENT ON COLUMN ");
+                sbSQL.append(PgDiffUtils.getQuotedName(
+                        columnComment.getColumnName()));
+                sbSQL.append(" IS ");
+                sbSQL.append(columnComment.getComment());
                 sbSQL.append(';');
             }
         }
-
-        sbSQL.append(getCommentDefinitionSQL());
 
         return sbSQL.toString();
     }
 
     /**
-     * Setter for {@link #materialized}.
+     * Creates and returns SQL statement for dropping the view.
      *
-     * @param materialized {@link #materialized}
+     * @return created SQL statement
      */
-    public void setMaterialized(boolean materialized) {
-        this.materialized = materialized;
+    public String getDropSQL() {
+        return "DROP VIEW " + PgDiffUtils.getQuotedName(getName()) + ";";
     }
 
     /**
-     * Getter for {@link #materialized}.
+     * Getter for {@link #name}.
      *
-     * @return {@link #materialized}
+     * @return {@link #name}
      */
-    public boolean isMaterialized() {
-        return materialized;
+    public String getName() {
+        return name;
     }
 
     /**
@@ -183,34 +188,162 @@ public class PgView extends PgRelation {
     }
 
     /**
-     * Finds column according to specified column {@code name}.
+     * Adds/replaces column default value specification.
      *
-     * @param name name of the column to be searched
-     *
-     * @return found column or null if no such column has been found
+     * @param columnName   column name
+     * @param defaultValue default value
      */
-    public PgColumn getColumn(final String name) {
-        PgColumn col = super.getColumn(name);
-        if (col == null && !declareColumnNames) {
-            /*
-             * In views, we don't always know columns beforehand; create a new
-             * column if the view didn't declare col names.
-             */
-            col = new PgColumn(name);
-            addColumn(col);
-        }
-        return col;
+    public void addColumnDefaultValue(final String columnName,
+            final String defaultValue) {
+        removeColumnDefaultValue(columnName);
+        defaultValues.add(new DefaultValue(columnName, defaultValue));
     }
 
     /**
-     * Returns true if table contains given column {@code name}, otherwise
-     * false.
+     * Removes column default value if present.
      *
-     * @param name name of the column
-     *
-     * @return true if table contains given column {@code name}, otherwise false
+     * @param columnName column name
      */
-    public boolean containsColumn(final String name) {
-        return true;
+    public void removeColumnDefaultValue(final String columnName) {
+        for (final DefaultValue item : defaultValues) {
+            if (item.getColumnName().equals(columnName)) {
+                defaultValues.remove(item);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Getter for {@link #defaultValues}.
+     *
+     * @return {@link #defaultValues}
+     */
+    public List<DefaultValue> getDefaultValues() {
+        return Collections.unmodifiableList(defaultValues);
+    }
+
+    /**
+     * Adds/replaces column comment.
+     *
+     * @param columnName column name
+     * @param comment    comment
+     */
+    public void addColumnComment(final String columnName,
+            final String comment) {
+        removeColumnDefaultValue(columnName);
+        columnComments.add(new ColumnComment(columnName, comment));
+    }
+
+    /**
+     * Removes column comment if present.
+     *
+     * @param columnName column name
+     */
+    public void removeColumnComment(final String columnName) {
+        for (final ColumnComment item : columnComments) {
+            if (item.getColumnName().equals(columnName)) {
+                columnComments.remove(item);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Getter for {@link #columnComments}.
+     *
+     * @return {@link #columnComments}
+     */
+    public List<ColumnComment> getColumnComments() {
+        return Collections.unmodifiableList(columnComments);
+    }
+
+    /**
+     * Contains information about default value of column.
+     */
+    @SuppressWarnings("PublicInnerClass")
+    public class DefaultValue {
+
+        /**
+         * Column name.
+         */
+        private final String columnName;
+        /**
+         * Default value.
+         */
+        private final String defaultValue;
+
+        /**
+         * Creates new instance of DefaultValue.
+         *
+         * @param columnName   {@link #columnName}
+         * @param defaultValue {@link #defaultValue}
+         */
+        DefaultValue(final String columnName, final String defaultValue) {
+            this.columnName = columnName;
+            this.defaultValue = defaultValue;
+        }
+
+        /**
+         * Getter for {@link #columnName}.
+         *
+         * @return {@link #columnName}
+         */
+        public String getColumnName() {
+            return columnName;
+        }
+
+        /**
+         * Getter for {@link #defaultValue}.
+         *
+         * @return {@link #defaultValue}
+         */
+        public String getDefaultValue() {
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Contains information about column comment.
+     */
+    @SuppressWarnings("PublicInnerClass")
+    public class ColumnComment {
+
+        /**
+         * Column name.
+         */
+        private final String columnName;
+        /**
+         * Comment.
+         */
+        private final String comment;
+
+        /**
+         * Creates new instance of ColumnComment.
+         *
+         * @param columnName {@link #columnName}
+         * @param comment    {@link #comment}
+         */
+        ColumnComment(final String columnName, final String comment) {
+            this.columnName = columnName;
+            this.comment = comment;
+        }
+
+        /**
+         * Getter for {@link #columnName}.
+         *
+         * @return {@link #columnName}
+         */
+        public String getColumnName() {
+            return columnName;
+        }
+
+        /**
+         * Getter for {@link #comment}.
+         *
+         * @return {@link #comment}
+         */
+        public String getComment() {
+            return comment;
+        }
     }
 }
