@@ -73,6 +73,10 @@ public class PgDiffArguments {
      * Drop If Exists and Create If Exists where possible
      */
     private boolean useIfExists;
+    /**
+     * Add SET CONSTRAINTS ALL DEFERRED
+     */
+    private boolean constraintsDeferred;
 
     /**
      * Setter for {@link #addDefaults}.
@@ -108,6 +112,24 @@ public class PgDiffArguments {
      */
     public boolean isAddTransaction() {
         return addTransaction;
+    }
+    
+    /**
+     * Setter for {@link #constraintsDeferred}.
+     *
+     * @param constraintsDeferred {@link #constraintsDeferred}
+     */
+    public void setConstraintsDeferred(final boolean constraintsDeferred) {
+        this.constraintsDeferred = constraintsDeferred;
+    }
+
+    /**
+     * Getter for {@link #constraintsDeferred}.
+     *
+     * @return {@link #constraintsDeferred}
+     */
+    public boolean isConstraintsDeferred() {
+        return constraintsDeferred;
     }
 
     /**
@@ -267,6 +289,8 @@ public class PgDiffArguments {
                 setVersion(true);
             } else if ("--drop-if-exists".equals(args[i])) {
                PgDiffUtils.setUseExists(true);
+            } else if ("--constraints-deferred".equals(args[i])) {
+                setConstraintsDeferred(true);
             } else {
                 writer.print(Resources.getString("ErrorUnknownOption"));
                 writer.print(": ");

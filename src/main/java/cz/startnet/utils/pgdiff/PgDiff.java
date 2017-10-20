@@ -121,6 +121,9 @@ public class PgDiff {
         if (arguments.isAddTransaction()) {
             writer.println("START TRANSACTION;");
         }
+        if (arguments.isConstraintsDeferred()) {
+            writer.println("SET CONSTRAINTS ALL DEFERRED;");
+        }
 
         if (oldDatabase.getComment() == null
                 && newDatabase.getComment() != null
